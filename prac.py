@@ -51,19 +51,19 @@ def make_new_pt(pt_3d, C):
         [C[1][0], C[1][1], C[1][2], C[1][3]],
         [C[2][0], C[2][1], C[2][2], C[2][3]],
     ]).astype(np.float32)
-    pt = np.mat([pt_3d[0], pt_3d[1], pt_3d[2], 1]).T.astype(np.float32)
-    rotation = np.array([[-1, 0 , 0],
-                        [ 0, -1, 0],
-                        [ 0,  0, 1]])
-    mat = np.matmul(P, pt)
-    rotatedPoint = np.matmul(rotation, mat)
+    pt = np.mat([pt_3d[0], pt_3d[1], pt_3d[2]]).T.astype(np.float32)
+    rotation = np.array([[0, 0 , 1],
+                        [ -1, 0,  0],
+                        [0,  -1, 0]])
+    mat = np.matmul(rotation, pt)
     #print(rotatedPoint.shape)
-    #toPose = np.array([rotatedPoint[0], rotatedPoint[1], rotatedPoint[2], 1])
+    toPose = np.array([mat[0], mat[1], mat[2], 1])
+    rotatedPoint = np.matmul(P, toPose.T)
     #toPose = np.array([rotatedPoint.T, 1]).T
     #print(toPose.shape)
     #exit()
     #Aligning the coordinate frame of open3d with that of cv2
-    return [rotatedPoint, rotatedPoint[2]]
+    return [rotatedPoint, rotatedPoint[0]]
     #return [mat, mat[2]]
 
 def main():
@@ -89,7 +89,7 @@ def main():
     wls_filter.setLambda(80000)
     wls_filter.setSigmaColor(1.3)
 
-    for i in range(60,65):
+    for i in range(60,81):
         imgL = cv2.imread( "./img2/img2/" + "00000004" + str(i) + ".png" , 0)
         imgR = cv2.imread( "./img3/img3/" + "00000004" + str(i) + ".png"  , 0)
         imgL_c = cv2.imread("img2/img2/" + "00000004" + str(i) + ".png" )
@@ -159,7 +159,7 @@ def main():
 
         for j,pt in enumerate(out_points):
             t += 1
-            if j%10 == 0:
+            if j%5 == 0:
                 pointProperties = make_new_pt(pt, transforms[i - 60])
                 point3D = pointProperties[0].T
                 depthWorldFrame = pointProperties[1]
@@ -170,9 +170,10 @@ def main():
                     max = depthWorldFrame
                 #Multiplying the reprojected points with the odometry poses to get the points in the world coordinate frame
                 #The make new point returns the reprojected, transformed point as well as a paramter used for depth rejection to obtain a clean point cloud.
-                #if depthWorldFrame <= 200 and depthWorldFrame >= 69:
-                final_output.append(point3D)
-                final_color.append(out_colors[j])
+                #if depthWorldFrame >=50 and depthWorldFrame <=160:
+                if depthWorldFrame >= -200 and depthWorldFrame <= 69:
+                    final_output.append(point3D)
+                    final_color.append(out_colors[j])
         avgD = d // t
         print(f"max {max}, avg {avgD}, min {min}")
 
