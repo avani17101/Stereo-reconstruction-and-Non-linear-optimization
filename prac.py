@@ -39,7 +39,7 @@ def extract(file):
         #Reads the poses text file.
     return transforms
 
-txtfile = open("poses.txt", "r")
+txtfile = open("./../../rrc/assignment/poses.txt", "r")
 transforms = extract(txtfile)
 txtfile.close()
 
@@ -59,11 +59,15 @@ def make_new_pt(pt_3d, C):
     #print(rotatedPoint.shape)
     toPose = np.array([mat[0], mat[1], mat[2], 1])
     rotatedPoint = np.matmul(P, toPose.T)
+    IMUtoVid = np.array([[0, -1, 0],
+                        [0, 0, -1],
+                        [1, 0, 0]])
+    rotatedPoint = IMUtoVid @ rotatedPoint.T
     #toPose = np.array([rotatedPoint.T, 1]).T
     #print(toPose.shape)
     #exit()
     #Aligning the coordinate frame of open3d with that of cv2
-    return [rotatedPoint, rotatedPoint[0]]
+    return [rotatedPoint, rotatedPoint[2]]
     #return [mat, mat[2]]
 
 def main():
@@ -89,10 +93,10 @@ def main():
     wls_filter.setLambda(80000)
     wls_filter.setSigmaColor(1.3)
 
-    for i in range(60,81):
-        imgL = cv2.imread( "./img2/img2/" + "00000004" + str(i) + ".png" , 0)
-        imgR = cv2.imread( "./img3/img3/" + "00000004" + str(i) + ".png"  , 0)
-        imgL_c = cv2.imread("img2/img2/" + "00000004" + str(i) + ".png" )
+    for i in range(60,75):
+        imgL = cv2.imread( "./../../rrc/assignment/img2/img2/" + "00000004" + str(i) + ".png" , 0)
+        imgR = cv2.imread( "./../../rrc/assignment/img3/img3/" + "00000004" + str(i) + ".png"  , 0)
+        imgL_c = cv2.imread("./../../rrc/assignment/img2/img2/" + "00000004" + str(i) + ".png" )
 
 
         left_disp = left_matcher.compute(imgL,imgR).astype(np.float32)
@@ -108,12 +112,6 @@ def main():
         Img_Filtered = np.float32(Img_Filtered)/16.0
         #imgplot = plt.imshow(Img_Filtered)
         #plt.show()
-
-        calib = np.array([ 7.215377000000e+02, 0.000000000000e+00, 6.095593000000e+02, 4.485728000000e+01,
-                           0.000000000000e+00, 7.215377000000e+02, 1.728540000000e+02, 2.163791000000e-01,
-                           0.000000000000e+00, 0.000000000000e+00, 1.000000000000e+00,2.745884000000e-03])
-
-        P0 = calib.reshape((3,4))
 
         P0 = np.array([7.070912e+02, 0.000000e+00, 6.018873e+02, 0.000000e+00, 7.070912e+02, 1.831104e+02, 0.000000e+00, 0.000000e+00, 1.000000e+00])
         P0 = P0.reshape((3,3))
@@ -131,20 +129,12 @@ def main():
         #points = cv2.reprojectImageTo3D(Img_Filtered, Q, handleMissingValues = 1)
         imgDim = imgL.shape
         points = np.zeros((imgDim[0], imgDim[1],3))
-        rotation = np.array([[-1, 0 , 0],
-                             [ 0, -1, 0],
-                             [ 0,  0, 1]])
 
         for x in range(imgDim[0]):
             for y in range(imgDim[1]):
                 reprojectedPoint = Q @ np.array([x, y, Img_Filtered[x][y], 1]).T
                 reprojectedPoint = reprojectedPoint / reprojectedPoint[3]
                 nonHomoPoint = reprojectedPoint[:3]
-                #reprojectedPoint = rotation @ nonHomoPoint
-                #print(reprojectedPoint.shape)
-                #exit()
-                #BlankBlank.append()
-                #points[x][y] = reprojectedPoint
                 points[x][y] = nonHomoPoint
 
         colors = cv2.cvtColor(imgL_c, cv2.COLOR_BGR2RGB)
@@ -159,7 +149,7 @@ def main():
 
         for j,pt in enumerate(out_points):
             t += 1
-            if j%5 == 0:
+            if j%10 == 0:
                 pointProperties = make_new_pt(pt, transforms[i - 60])
                 point3D = pointProperties[0].T
                 depthWorldFrame = pointProperties[1]
@@ -177,7 +167,7 @@ def main():
         avgD = d // t
         print(f"max {max}, avg {avgD}, min {min}")
 
-    out_fn = "finalRegistration.ply"
+    out_fn = "finalRegistrationt.ply"
     final_output = np.array(final_output)
     final_color = np.array(final_color)
     print(final_output.shape)
@@ -186,5 +176,5 @@ def main():
 
 main()
 
-pcd = o3d.io.read_point_cloud("./finalRegistration.ply")
+pcd = o3d.io.read_point_cloud("./finalRegistrationt.ply")
 o3d.visualization.draw_geometries([pcd])
